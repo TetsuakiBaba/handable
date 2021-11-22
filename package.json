@@ -1,0 +1,49 @@
+{
+  "name": "handable",
+  "version": "0.1.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build-mac": "electron-builder --mac",
+    "build-win": "electron-builder --win",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^14.2.1",
+    "electron-builder": "^22.14.5"
+  },
+  "build": {
+    "appId": "net.tetsuakibaba.app.handable",
+    "afterSign": "scripts/notarize.js",
+    "productName": "handable",
+    "copyright": "Copyright © 2021 Tetsuaki Baba",
+    "dmg": {
+      "sign": false
+    },
+    "mac": {
+      "target": {
+        "target": "dmg",
+        "arch": "universal"
+      },
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "icon": "./images/icon.icns"
+    },
+    "win": {
+      "target": {
+        "target": "nsis",
+        "arch": "x64"
+      },
+      "icon": "./images/icon.ico"
+    }
+  },
+  "dependencies": {
+    "dotenv": "^10.0.0",
+    "electron-notarize": "^1.1.1"
+  }
+}
