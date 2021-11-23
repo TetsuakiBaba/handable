@@ -17,7 +17,6 @@
   },
   "build": {
     "appId": "net.tetsuakibaba.app.handable",
-    "afterSign": "scripts/notarize.js",
     "productName": "handable",
     "copyright": "Copyright © 2021 Tetsuaki Baba",
     "dmg": {
