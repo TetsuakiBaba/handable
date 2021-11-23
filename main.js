@@ -5,11 +5,13 @@ const is_mac = process.platform === 'darwin';
 const is_linux = process.platform === 'linux';
 
 // Modules to control application life and create native browser window
-const { app, globalShortcut, BrowserWindow, screen, Tray, Menu, MenuItem } = require('electron')
+const { app, globalShortcut, BrowserWindow, screen, Tray, Menu, MenuItem, ipcMain } = require('electron')
 const path = require('path')
+var robot = require("robotjs");
 
 var selected_deviceId = '';
 var is_camera_active = false;
+var is_enable_mouse = false;
 
 var mainWindow;
 function createWindow() {
@@ -30,7 +32,8 @@ function createWindow() {
     frame: false,
     resizable: false,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true
     }
   })
 
@@ -80,6 +83,19 @@ app.whenReady().then(() => {
             else {
               tray.setImage(`${__dirname}/images/icon.png`);
             }
+          }).catch(console.error);
+      }
+    },
+    {
+      type: 'separator',
+    },
+    {
+      label: 'Mouse operation [experimental]',
+      type: 'checkbox',
+      click(item, focusedWindows) {
+        is_enable_mouse = !is_enable_mouse;
+        mainWindow.webContents.executeJavaScript(`toggleFingerGesture(${is_enable_mouse});`, true)
+          .then(result => {
           }).catch(console.error);
       }
     },
@@ -152,7 +168,7 @@ app.whenReady().then(() => {
             }
           }
         };
-        if (sc_count == 0) {
+        if (sc_count == 2) {
           selected_deviceId = device.id;
           data_append_camera.submenu[sc_count].checked = true;
         }
@@ -216,3 +232,31 @@ app.on('will-quit', function () {
   // Unregister all shortcuts.
   globalShortcut.unregisterAll();
 });
+
+
+//----------------------------------------
+// IPC通信
+//----------------------------------------
+// 語尾に "にゃん" を付けて返す
+ipcMain.handle('nyan', (event, data) => {
+  return (`${data}にゃん`)
+})
+
+ipcMain.handle('down', (event, data) => {
+  if (is_enable_mouse) {
+    robot.moveMouse(data.x, data.y);
+    robot.mouseToggle('down');
+  }
+})
+
+ipcMain.handle('drag', (event, data) => {
+  if (is_enable_mouse) {
+    robot.dragMouse(data.x, data.y);
+  }
+})
+ipcMain.handle('up', (event, data) => {
+  if (is_enable_mouse) {
+    robot.moveMouse(data.x, data.y);
+    robot.mouseToggle('up');
+  }
+})
