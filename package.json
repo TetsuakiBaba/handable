@@ -1,6 +1,6 @@
 {
   "name": "handable",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "",
   "main": "main.js",
   "scripts": {
@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "dotenv": "^10.0.0",
-    "electron-notarize": "^1.1.1"
+    "electron-notarize": "^1.1.1",
+    "robotjs": "^0.6.0"
   }
 }

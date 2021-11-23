@@ -1,7 +1,6 @@
 var g_landmarks = [];
-
-
-
+var is_enable_gesture = false;
+var is_pinched = false;
 // ここからMediaPipeの記述
 function onResults(results) {
     if (results.multiHandLandmarks) {
@@ -10,7 +9,44 @@ function onResults(results) {
             g_landmarks.push(landmarks);
 
         }
-        // 指文字認識をさせるタイミングはここでやるのがいいと思う．
+        // ハンドジェスチャ認識処理はこのタイミングがよいと思う
+        for (landmarks of g_landmarks) {
+            let distance_4to8 = dist(
+                landmarks[4].x, landmarks[4].y, landmarks[4].z,
+                landmarks[8].x, landmarks[8].y, landmarks[8].z);
+
+            if (distance_4to8 < 0.05) {
+                if (is_pinched == false) {
+                    (async () => {
+                        const message = await window.myapi.down({
+                            x: width * (1.0 - (landmarks[4].x + (landmarks[8].x - landmarks[4].x) / 2)),
+                            y: height * (landmarks[4].y + (landmarks[8].y - landmarks[4].y) / 2)
+                        })
+                    })()
+                }
+                else {
+                    (async () => {
+                        const message = await window.myapi.drag({
+                            x: width * (1.0 - (landmarks[4].x + (landmarks[8].x - landmarks[4].x) / 2)),
+                            y: height * (landmarks[4].y + (landmarks[8].y - landmarks[4].y) / 2)
+                        })
+                    })()
+                }
+                is_pinched = true;
+            }
+            else {
+                if (is_pinched == true) {
+                    (async () => {
+                        const message = await window.myapi.up({
+                            x: width * (1.0 - (landmarks[4].x + (landmarks[8].x - landmarks[4].x) / 2)),
+                            y: height * (landmarks[4].y + (landmarks[8].y - landmarks[4].y) / 2)
+                        })
+                    })()
+                }
+                is_pinched = false;
+            }
+        }
+
     }
     draw();
 }
@@ -32,6 +68,10 @@ function setup() {
     // video.hide();
     noLoop();
 
+    (async () => {
+        const message = await window.myapi.nyan('はい')
+        console.log(message)  // "はいにゃん"
+    })()
 }
 
 function draw() {
@@ -64,10 +104,11 @@ function draw() {
                 [13, 14, 15, 16],
                 [17, 18, 19, 20]
             ];
-            strokeWeight(width / 100);
+
             noFill();
             stroke(0, 200);
             for (array_point of array_points) {
+                strokeWeight(width / 100);
                 beginShape();
                 curveVertex(
                     width * (1.0 - landmarks[array_point[0]].x),
@@ -84,6 +125,16 @@ function draw() {
                     height * (landmarks[array_point[array_point.length - 1]].y)
                 );
                 endShape();
+            }
+            if (is_enable_gesture) {
+                if (is_pinched) {
+                    noStroke();
+                    fill(255, 0, 0, 200);
+                    circle(
+                        width * (1.0 - (landmarks[4].x + (landmarks[8].x - landmarks[4].x) / 2)),
+                        height * (landmarks[4].y + (landmarks[8].y - landmarks[4].y) / 2),
+                        50);
+                }
             }
 
         }
@@ -125,6 +176,9 @@ function keyPressed() {
 
 }
 
+function toggleFingerGesture(_enable_gesture) {
+    is_enable_gesture = _enable_gesture;
+}
 function toggleMediaPipeHands(_deviceId) {
 
     if (document.querySelector('video')) {
