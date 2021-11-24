@@ -5,9 +5,12 @@ const is_mac = process.platform === 'darwin';
 const is_linux = process.platform === 'linux';
 
 // Modules to control application life and create native browser window
-const { app, globalShortcut, BrowserWindow, screen, Tray, Menu, MenuItem, ipcMain } = require('electron')
+const { app, globalShortcut, BrowserWindow, screen, Tray, Menu, MenuItem, ipcMain, dialog } = require('electron')
 const path = require('path')
-var robot = require("robotjs");
+
+
+const { mouse, Button } = require("@nut-tree/nut-js");
+
 
 var selected_deviceId = '';
 var is_camera_active = false;
@@ -71,7 +74,7 @@ app.whenReady().then(() => {
 
   let tray_menu = Menu.buildFromTemplate([
     {
-      label: 'start/stop',
+      label: 'Start/Stop',
       accelerator: 'Ctrl+Shift+s',
       click(item, focusedWindows) {
         mainWindow.webContents.executeJavaScript(`toggleMediaPipeHands();`, true)
@@ -111,7 +114,19 @@ app.whenReady().then(() => {
       type: 'separator',
     },
 
-    { label: 'Quit handable', role: 'quit' },
+    {
+      label: 'About',
+      click(item, focusedWindows) {
+        const options = {
+          type: 'info',  // none/info/error/quetion/warning
+          title: 'ABOUT',
+          message: `${app.getName()} by Tetsuaki BABA\nVersion: ${app.getVersion()}`,
+          detail: `https://github.com/TetsuakiBaba/handable`
+        };
+        dialog.showMessageBox(options);
+      }
+    },
+    { label: 'Quit', role: 'quit' },
   ]);
 
   let screens = screen.getAllDisplays();
@@ -137,6 +152,9 @@ app.whenReady().then(() => {
         console.log(item.x, item.y, item.w, item.h);
       }
     };
+    if (sc_count == 0) {
+      data_append.submenu[sc_count].checked = true;
+    }
     sc_count++;
   }
   tray_menu.insert(2, new MenuItem(data_append));
@@ -161,14 +179,14 @@ app.whenReady().then(() => {
             if (is_camera_active) {
               mainWindow.webContents.executeJavaScript(`stopMediaPipeHands();`, true)
                 .then(result => {
-                  mainWindow.webContents.executeJavaScript(`startMediaPipeHands("${selected_deviceId}");`, true)
+                  mainWindow.webContents.executeJavaScript(`startMediaPipeHands("${selected_deviceId}"); `, true)
                     .then(result => {
                     }).catch(console.error);
                 }).catch(console.error);
             }
           }
         };
-        if (sc_count == 2) {
+        if (sc_count == 0) {
           selected_deviceId = device.id;
           data_append_camera.submenu[sc_count].checked = true;
         }
@@ -187,7 +205,7 @@ app.whenReady().then(() => {
 
   var ret = globalShortcut.register('ctrl+shift+s', function () {
     console.log('toggle MediaPipeHands');
-    mainWindow.webContents.executeJavaScript(`toggleMediaPipeHands("${selected_deviceId}");`, true)
+    mainWindow.webContents.executeJavaScript(`toggleMediaPipeHands("${selected_deviceId}"); `, true)
       .then(result => {
         is_camera_active = !is_camera_active;
         if (is_camera_active) {
@@ -235,28 +253,28 @@ app.on('will-quit', function () {
 
 
 //----------------------------------------
-// IPC通信
+// IPC Communication
 //----------------------------------------
-// 語尾に "にゃん" を付けて返す
-ipcMain.handle('nyan', (event, data) => {
-  return (`${data}にゃん`)
-})
-
 ipcMain.handle('down', (event, data) => {
   if (is_enable_mouse) {
-    robot.moveMouse(data.x, data.y);
-    robot.mouseToggle('down');
+    (async () => {
+      await mouse.setPosition(data);
+      await mouse.pressButton(Button.LEFT);
+    })()
   }
 })
 
 ipcMain.handle('drag', (event, data) => {
   if (is_enable_mouse) {
-    robot.dragMouse(data.x, data.y);
+    mouse.setPosition(data);
   }
 })
 ipcMain.handle('up', (event, data) => {
   if (is_enable_mouse) {
-    robot.moveMouse(data.x, data.y);
-    robot.mouseToggle('up');
+    (async () => {
+      await mouse.setPosition(data);
+      await mouse.releaseButton(Button.LEFT);
+
+    })()
   }
 })
