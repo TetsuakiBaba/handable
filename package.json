@@ -1,7 +1,7 @@
 {
   "name": "handable",
-  "version": "0.2.0",
-  "description": "",
+  "version": "0.2.1",
+  "description": "handable is an application that draws only the user's hand on the entire desktop screen. During a presentation, the user can use his or her hands to communicate various gestures.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -9,7 +9,7 @@
     "build-win": "electron-builder --win",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "Tetsuaki BABA",
   "license": "ISC",
   "devDependencies": {
     "electron": "^14.2.1",
@@ -18,6 +18,7 @@
   "build": {
     "appId": "net.tetsuakibaba.app.handable",
     "productName": "handable",
+    "afterSign": "./scripts/notarize.js",
     "copyright": "Copyright © 2021 Tetsuaki Baba",
     "dmg": {
       "sign": false
@@ -42,8 +43,8 @@
     }
   },
   "dependencies": {
+    "@nut-tree/nut-js": "^1.7.1-next.20211116233225",
     "dotenv": "^10.0.0",
-    "electron-notarize": "^1.1.1",
-    "robotjs": "^0.6.0"
+    "electron-notarize": "^1.1.1"
   }
 }

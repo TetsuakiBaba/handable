@@ -67,11 +67,6 @@ function setup() {
     // video.size(1280, 720);
     // video.hide();
     noLoop();
-
-    (async () => {
-        const message = await window.myapi.nyan('はい')
-        console.log(message)  // "はいにゃん"
-    })()
 }
 
 function draw() {
