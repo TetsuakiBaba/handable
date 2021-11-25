@@ -1,6 +1,6 @@
 {
   "name": "handable",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "handable is an application that draws only the user's hand on the entire desktop screen. During a presentation, the user can use his or her hands to communicate various gestures.",
   "main": "main.js",
   "scripts": {
