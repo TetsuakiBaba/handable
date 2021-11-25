@@ -16,6 +16,11 @@ var selected_deviceId = '';
 var is_camera_active = false;
 var is_enable_mouse = false;
 
+var mouse_offset = {
+  x: 0,
+  y: 0
+}
+
 var mainWindow;
 function createWindow() {
   // Create the browser window.
@@ -23,6 +28,8 @@ function createWindow() {
   const { width, height } = active_screen.workAreaSize;
   const x = active_screen.workArea.x;
   const y = active_screen.workArea.y;
+  mouse_offset.x = active_screen.bounds.x;
+  mouse_offset.y = active_screen.bounds.y;
 
   mainWindow = new BrowserWindow({
     title: 'handable',
@@ -40,6 +47,9 @@ function createWindow() {
     }
   })
 
+
+
+
   // and load the index.html of the app.
   //mainWindow.loadFile('index.html')
 
@@ -50,9 +60,9 @@ function createWindow() {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
+
+
 app.whenReady().then(() => {
-
-
 
   createWindow()
   let menu = Menu.buildFromTemplate(
@@ -77,7 +87,7 @@ app.whenReady().then(() => {
       label: 'Start/Stop',
       accelerator: 'Ctrl+Shift+s',
       click(item, focusedWindows) {
-        mainWindow.webContents.executeJavaScript(`toggleMediaPipeHands();`, true)
+        mainWindow.webContents.executeJavaScript(`toggleMediaPipeHands("${selected_deviceId}"); `, true)
           .then(result => {
             is_camera_active = !is_camera_active;
             if (is_camera_active) {
@@ -146,10 +156,10 @@ app.whenReady().then(() => {
       w: sc.workArea.width,
       h: sc.workArea.height,
       click: function (item) {
-        console.log(item);
         mainWindow.setPosition(item.x, item.y, true);
         mainWindow.setSize(item.w, item.h, true);
-        console.log(item.x, item.y, item.w, item.h);
+        mouse_offset.x = item.x;
+        mouse_offset.y = item.y;
       }
     };
     if (sc_count == 0) {
@@ -167,7 +177,6 @@ app.whenReady().then(() => {
   sc_count = 0;
   mainWindow.webContents.executeJavaScript('navigator.mediaDevices.enumerateDevices().then(function (devices) { let device_list = [];devices.forEach(function (device) { if( device.kind == "videoinput" ){device_list.push({label:device.label,id:device.deviceId})} console.log(device.kind + ": " + device.label +  " id = " + device.deviceId); }); return device_list;  }).catch(function (err) {  console.log(err.name + ": " + err.message); });', true)
     .then((result) => {
-      console.log(result);
       for (device of result) {
         data_append_camera.submenu[sc_count] = {
           label: device.label,
@@ -195,12 +204,13 @@ app.whenReady().then(() => {
       tray_menu.insert(2, new MenuItem(data_append_camera));
       tray.setToolTip('handable');
       tray.setContextMenu(tray_menu);
-      tray.on('click', function () {
-        tray.popUpContextMenu(tray_menu);
-      });
+
     });
 
 
+  tray.on('click', function () {
+    tray.popUpContextMenu(tray_menu);
+  });
 
 
   var ret = globalShortcut.register('ctrl+shift+s', function () {
@@ -258,23 +268,34 @@ app.on('will-quit', function () {
 ipcMain.handle('down', (event, data) => {
   if (is_enable_mouse) {
     (async () => {
-      await mouse.setPosition(data);
+      var pos = {
+        x: data.x + mouse_offset.x,
+        y: data.y + mouse_offset.y
+      }
+      await mouse.setPosition(pos);
       await mouse.pressButton(Button.LEFT);
     })()
   }
-})
 
+})
 ipcMain.handle('drag', (event, data) => {
   if (is_enable_mouse) {
-    mouse.setPosition(data);
+    var pos = {
+      x: data.x + mouse_offset.x,
+      y: data.y + mouse_offset.y
+    }
+    mouse.setPosition(pos);
   }
 })
 ipcMain.handle('up', (event, data) => {
   if (is_enable_mouse) {
     (async () => {
-      await mouse.setPosition(data);
+      var pos = {
+        x: data.x + mouse_offset.x,
+        y: data.y + mouse_offset.y
+      }
+      await mouse.setPosition(pos);
       await mouse.releaseButton(Button.LEFT);
-
     })()
   }
 })
