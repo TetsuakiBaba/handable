@@ -4,6 +4,8 @@ handable is an application that draws only the user's hand on the entire desktop
 
 As an experimental feature, we have implemented a mouse control function. Pinch gestures can be used for mouse click, release, and drag operations. Normally, the function is turned off, so please check the Mouse Operation checkbox in the tray menu.
 
+  * webpage: https://handable.carrd.co/
+
 
 
 ## Dependencies (npm)
