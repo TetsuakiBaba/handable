@@ -14,6 +14,20 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
         crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script> -->
+    <script type="text/javascript">
+
+        //some mysterious code to get device ids
+        navigator.mediaDevices.enumerateDevices()
+            .then(function (devices) {
+                devices.forEach(function (device) {
+                    console.log(device.kind + ": " + device.label +
+                        " id = " + device.deviceId);
+                });
+            })
+            .catch(function (err) {
+                console.log(err.name + ": " + err.message);
+            });
+    </script>
     <script src="./js/camera_utils.js"></script>
     <script src="./js/control_utils.js"></script>
     <script src="./js/hands.js"></script>
@@ -33,7 +47,10 @@
 
     </div>
 </body>
+<button id="startCamera" onclick="startCamera();" style="position:absolute;left:10px;top:10px;" hidden>start Camera
+    Manually</button>
 <script src="./p5.min.js"></script>
+<script src="./js/dollar.js"></script>
 <script src="./sketch.js"></script>
 
 </html>

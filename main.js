@@ -9,7 +9,7 @@ const { app, globalShortcut, BrowserWindow, screen, Tray, Menu, MenuItem, ipcMai
 const path = require('path')
 
 
-const { mouse, Button } = require("@nut-tree/nut-js");
+const { mouse, Button, Key, keyboard } = require("@nut-tree/nut-js");
 
 
 var selected_deviceId = '';
@@ -298,4 +298,16 @@ ipcMain.handle('up', (event, data) => {
       await mouse.releaseButton(Button.LEFT);
     })()
   }
+})
+
+ipcMain.handle('pressKey', (event, data) => {
+  //await keyboard.pressKey(Key);
+  if (data.kind == 'right') (async () => { await keyboard.pressKey(Key.Right); })()
+  if (data.kind == 'left') (async () => { await keyboard.pressKey(Key.Left); })()
+})
+
+ipcMain.handle('releaseKey', (event, data) => {
+  //await keyboard.pressKey(Key);
+  if (data.kind == 'left') (async () => { await keyboard.releaseKey(Key.Left); })()
+  if (data.kind == 'right') (async () => { await keyboard.releaseKey(Key.Right); })()
 })

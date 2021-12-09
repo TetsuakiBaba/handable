@@ -1,0 +1,15 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: handable
+message: >-
+  If you use this software or code, please cite it as
+  below
+type: software
+authors:
+  - given-names: Tetsuaki
+    family-names: Baba
+    email: baba@tmu.ac.jp
+    affiliation: Tokyo Metropolitan University
+    orcid: 'https://orcid.org/0000-0003-1792-881X'
