@@ -1,28 +1,101 @@
 var g_landmarks = [];
 var g_angles = [];
-var is_enable_gesture = false;
+var is_enable_mouse = false;
 var is_pinched = false;
 var dollar;
 
+var trail_mode = {
+    kinds: [{ name: 'None' }, { name: 'All Fingers' }, { name: 'Index Finger' }],
+    name: 'None',
+    current: 0,
+    toggle: function () {
+        this.current++;
+        if (this.current > this.kinds.length - 1) {
+            this.current = 0;
+        }
+        this.name = this.kinds[this.current].name;
+        console.log(this.name);
+    }
+}
+
+var g_browser_mode;
 var is_dollar_active = false;
 var is_pose_active = false;
 var time_stamp_pose_active;
 var time_stamp_pose_deactive;
 var ms_operation_activate = 1000;
-var angles_gesturing = [151.0232640949309, 145.089203018993, 144.16041218595345, 169.68865560150968, 177.15161107874442, 175.53394799584137, 173.98758495731641, 179.36823806450363, 174.9455227261207, 164.41700628951898, 26.185195501561566, 169.24322576395195, 155.01530489937826, 38.58580456701814, 168.6758256467776];
+var threshold = -0.08;
+var poses = [
+    {
+        class: 'scissors',
+        angles: [151.0232640949309, 145.089203018993, 144.16041218595345, 169.68865560150968, 177.15161107874442, 175.53394799584137, 173.98758495731641, 179.36823806450363, 174.9455227261207, 164.41700628951898, 26.185195501561566, 169.24322576395195, 155.01530489937826, 38.58580456701814, 168.6758256467776],
+        active: false,
+        timestamp: 0
+
+    },
+    {
+        class: '5_fingers_pinch',
+        angles: [154.3371648438161, 174.62492934438916, 171.23768032070492, 166.31589751344552, 141.49517480457678, 162.75608187430615, 164.91395822446106, 125.91358194207635, 138.95927474274404, 162.89030937597866, 116.01607436927182, 140.65775245114062, 139.3503002981901, 151.04051353558503, 156.65701995872436],
+        active: false,
+        timestamp: 0
+    }
+]
 
 
+var trails_left;
+var trails_right;
+var previous_z = 0;
 // ここからMediaPipeの記述
 function onResults(results) {
+
     if (results.multiHandLandmarks) {
+
         g_landmarks = [];
         g_angles = [];
+        let num = 0;
         for (const landmarks of results.multiHandLandmarks) {
+            landmarks.handedness = results.multiHandedness[num];
             g_landmarks.push(landmarks);
+            num++;
         }
+        //console.log(g_landmarks);
+        //console.log(results.multiHandedness);
         //console.log(results.multiHandness[0].Left);
+
         // ハンドジェスチャ認識処理はこのタイミングがよいと思う
         for (landmarks of g_landmarks) {
+            let tips = [4, 8, 12, 16, 20];
+            //console.log(landmarks.handedness);
+            if (landmarks.handedness.label == 'Left' && landmarks.handedness.score > 0.85) {
+                trails_right.addVertex([
+                    { x: width * (1.0 - landmarks[4].x), y: height * (landmarks[4].y) },
+                    { x: width * (1.0 - landmarks[8].x), y: height * (landmarks[8].y) },
+                    { x: width * (1.0 - landmarks[12].x), y: height * (landmarks[12].y) },
+                    { x: width * (1.0 - landmarks[16].x), y: height * (landmarks[16].y) },
+                    { x: width * (1.0 - landmarks[20].x), y: height * (landmarks[20].y) }
+                ]);
+
+                if (is_enable_mouse) {
+                    if (landmarks[8].z < threshold && previous_z >= threshold) {
+                        (async () => {
+                            const message = await window.myapi.leftClick({
+                                x: width * (1.0 - landmarks[8].x),
+                                y: height * (landmarks[8].y)
+                            })
+                        })()
+                    }
+                }
+                previous_z = landmarks[8].z;
+            }
+            else if (landmarks.handedness.label == 'Right' && landmarks.handedness.score > 0.85) {
+                trails_left.addVertex([
+                    { x: width * (1.0 - landmarks[4].x), y: height * (landmarks[4].y) },
+                    { x: width * (1.0 - landmarks[8].x), y: height * (landmarks[8].y) },
+                    { x: width * (1.0 - landmarks[12].x), y: height * (landmarks[12].y) },
+                    { x: width * (1.0 - landmarks[16].x), y: height * (landmarks[16].y) },
+                    { x: width * (1.0 - landmarks[20].x), y: height * (landmarks[20].y) }
+                ]);
+            }
 
             let pos_fingers = [
                 [0, 1, 2, 3, 4],
@@ -67,21 +140,40 @@ function onResults(results) {
 
             // pose_gesturing との比較
             if (g_angles.length == 15) {
-                let d_sum = 0;
-                for (let pos = 0; pos < g_angles.length; pos++) {
-                    d_sum += pow(g_angles[pos] - angles_gesturing[pos], 2);
-                }
-                d_sum = sqrt(d_sum);
-                //console.log(d_sum);
-                if (d_sum < 100) {
-                    if (is_pose_active == false) {
-                        is_pose_active = true;
-                        timestamp_pose_active = millis();
+                for (let pose of poses) {
+                    let d_sum = 0;
+                    for (let pos = 0; pos < g_angles.length; pos++) {
+                        d_sum += pow(g_angles[pos] - pose.angles[pos], 2);
                     }
-                }
-                else {
-                    is_pose_active = false;
-                    timestamp_pose_deactive = millis();
+                    d_sum = sqrt(d_sum);
+                    //console.log(d_sum);
+
+                    if (pose.class == 'scissors') {
+                        if (d_sum < 100) {
+                            if (pose.active == false) {
+                                pose.active = true;
+                                pose.timestamp = millis();
+                            }
+                        }
+                        else {
+                            pose.active = false;
+                            pose.timestamp = millis();
+                        }
+                    }
+                    else if (pose.class == '5_fingers_pinch') {
+                        //console.log(d_sum);
+                        if (d_sum < 50) {
+                            if (pose.active == false) {
+                                pose.active = true;
+                                pose.timestamp = millis();
+                            }
+                        }
+                        else {
+                            pose.active = false;
+                            pose.timestamp = millis();
+                        }
+                    }
+
                 }
             }
 
@@ -93,42 +185,49 @@ function onResults(results) {
 
             if (distance_4to8 < 0.05) {
                 if (is_pinched == false) {
-                    (async () => {
-                        const message = await window.myapi.down({
-                            x: width * (1.0 - (landmarks[4].x + (landmarks[8].x - landmarks[4].x) / 2)),
-                            y: height * (landmarks[4].y + (landmarks[8].y - landmarks[4].y) / 2)
-                        })
-                    })()
+                    if (g_browser_mode == false) {
+                        (async () => {
+                            const message = await window.myapi.down({
+                                x: width * (1.0 - (landmarks[4].x + (landmarks[8].x - landmarks[4].x) / 2)),
+                                y: height * (landmarks[4].y + (landmarks[8].y - landmarks[4].y) / 2)
+                            })
+                        })()
+                    }
                 }
                 else {
-                    (async () => {
-                        const message = await window.myapi.drag({
-                            x: width * (1.0 - (landmarks[4].x + (landmarks[8].x - landmarks[4].x) / 2)),
-                            y: height * (landmarks[4].y + (landmarks[8].y - landmarks[4].y) / 2)
-                        })
-                    })()
+                    if (g_browser_mode == false) {
+                        (async () => {
+                            const message = await window.myapi.drag({
+                                x: width * (1.0 - (landmarks[4].x + (landmarks[8].x - landmarks[4].x) / 2)),
+                                y: height * (landmarks[4].y + (landmarks[8].y - landmarks[4].y) / 2)
+                            })
+                        })()
+                    }
                 }
                 is_pinched = true;
             }
             else {
                 if (is_pinched == true) {
-                    (async () => {
-                        const message = await window.myapi.up({
-                            x: width * (1.0 - (landmarks[4].x + (landmarks[8].x - landmarks[4].x) / 2)),
-                            y: height * (landmarks[4].y + (landmarks[8].y - landmarks[4].y) / 2)
-                        })
-                    })()
+                    if (g_browser_mode == false) {
+                        (async () => {
+                            const message = await window.myapi.up({
+                                x: width * (1.0 - (landmarks[4].x + (landmarks[8].x - landmarks[4].x) / 2)),
+                                y: height * (landmarks[4].y + (landmarks[8].y - landmarks[4].y) / 2)
+                            })
+                        })()
+                    }
                 }
                 is_pinched = false;
             }
         }
-
+        //  draw();
     }
-    draw();
+    if (isLooping() == false) {
+        loop();
+    }
 }
 
 // ここまでMediaPipeの記述
-
 var camera;
 var video;
 var cam;
@@ -141,15 +240,32 @@ function startCamera() {
 function setup() {
     // put setup code here
     var mycanvas = createCanvas(windowWidth, windowHeight);
+    drawingContext.shadowBlur = 7;
+    drawingContext.shadowOffsetX = 5;
+    drawingContext.shadowOffsetY = 5;
+    drawingContext.shadowColor = color(150, 150, 150);
     console.log(mycanvas);
     document.querySelector('#p5Canvas').appendChild(mycanvas.elt);
     //mycanvas.parent('#p5canvas');
     // video = createCapture(VIDEO);
     // video.size(1280, 720);
     // video.hide();
-    noLoop();
+    //noLoop();
 
-    //startCamera();
+    trails_left = new Trails(5);
+    trails_right = new Trails(5);
+    // electron利用時は startCamera はコメントアウトする
+
+    if (localStorage.getItem('electron') == null) {
+        //alert('debug mode')
+        g_browser_mode = true;
+        startCamera();
+    }
+    else {
+        g_browser_mode = false;
+    }
+    console.log('hello');
+
     dollar = DollarRecognizer();
 }
 
@@ -157,23 +273,35 @@ function draw() {
     clear();
 
     //background(127);
-
     //image(video, 0, 0);
 
-
     if (g_landmarks.length > 0) {
+
         for (landmarks of g_landmarks) {
-            // beginShape(POINTS);
-            // let count = 0;
-            // for (landmark of landmarks) {
-            //     vertex(
-            //         width * (1.0 - landmark.x),
-            //         height * landmark.y
-            //     );
-            //     text(count, width * (1.0 - landmark.x), height * landmark.y);
-            //     count++;
-            // }
-            // endShape();
+
+            // 押し込んでマウスクリック操作
+            if (is_enable_mouse) {
+                if (landmarks[8].z / threshold > 0.4) {
+                    noStroke();
+                    fill(255, 0, 0, 150);
+                    circle(
+                        width * (1.0 - landmarks[8].x),
+                        height * landmarks[8].y,
+                        (width / 20) * landmarks[8].z / threshold,
+                        (width / 20) * landmarks[8].z / threshold
+                    );
+                    strokeWeight(2);
+                    noFill();
+                    stroke(255, 0, 0);
+                    circle(
+                        width * (1.0 - landmarks[8].x),
+                        height * landmarks[8].y,
+                        (width / 20),
+                        (width / 20)
+                    );
+                }
+            }
+
 
             let array_points = [
                 [0, 1, 2, 5, 9, 13, 17, 0],
@@ -185,41 +313,31 @@ function draw() {
             ];
 
             noFill();
-            stroke(0, 200);
+            stroke(50, 200);
             for (array_point of array_points) {
-                strokeWeight(width / 100);
-                beginShape();
-                curveVertex(
-                    width * (1.0 - landmarks[array_point[0]].x),
-                    height * (landmarks[array_point[0]].y)
-                );
-                for (point of array_point) {
+                if (array_point.length > 0) {
+                    strokeWeight(width / 100);
+                    beginShape();
                     curveVertex(
-                        width * (1.0 - landmarks[point].x),
-                        height * landmarks[point].y
+                        width * (1.0 - landmarks[array_point[0]].x),
+                        height * (landmarks[array_point[0]].y)
                     );
+                    for (point of array_point) {
+                        vertex(
+                            width * (1.0 - landmarks[point].x),
+                            height * landmarks[point].y
+                        );
+                    }
+                    curveVertex(
+                        width * (1.0 - landmarks[array_point[array_point.length - 1]].x),
+                        height * (landmarks[array_point[array_point.length - 1]].y)
+                    );
+                    endShape();
                 }
-                curveVertex(
-                    width * (1.0 - landmarks[array_point[array_point.length - 1]].x),
-                    height * (landmarks[array_point[array_point.length - 1]].y)
-                );
-                endShape();
             }
 
-            // let ps = [1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19];
-            // let count = 0;
-            // for (p of ps) {
-            //     noFill();
-            //     strokeWeight(1.0);
-            //     stroke(0, 150, 0);
-            //     text(nf(g_angles[count], 1, 2),
-            //         width * (1.0 - landmarks[p].x),
-            //         height * (landmarks[p].y));
-            //     count++;
-            // }
 
-
-            if (is_enable_gesture) {
+            if (is_enable_mouse) {
                 if (is_pinched) {
                     noStroke();
                     fill(255, 0, 0, 200);
@@ -229,56 +347,80 @@ function draw() {
                         50);
                 }
             }
-            if (is_dollar_active) {
-                noStroke();
-                fill(255, 0, 0, 200);
-                circle(
-                    width * (1.0 - (landmarks[12].x + (landmarks[8].x - landmarks[12].x) / 2)),
-                    height * (landmarks[12].y + (landmarks[8].y - landmarks[12].y) / 2),
-                    50);
-            }
 
-            if (is_pose_active) {
-                noStroke();
-                fill(150, 0, 0, 150);
-                let my_x = width * (1.0 - (landmarks[12].x + (landmarks[8].x - landmarks[12].x) / 2));
-                let my_y = height * (landmarks[12].y + (landmarks[8].y - landmarks[12].y) / 2);
-                arc(width * (1.0 - (landmarks[12].x + (landmarks[8].x - landmarks[12].x) / 2)),
-                    height * (landmarks[12].y + (landmarks[8].y - landmarks[12].y) / 2),
-                    80, 80,
-                    0,
-                    TWO_PI * ((millis() - timestamp_pose_active) / ms_operation_activate),
-                    PIE);
-                if ((millis() - timestamp_pose_active) / ms_operation_activate > 1.0) {
-                    //console.log("clicked");
-                    is_pose_active = false;
-                    (async () => {
-                        if (my_x < width / 2) {
-                            const message = await window.myapi.pressKey({
-                                kind: 'left'
-                            })
-                            message = await window.myapi.releaseKey({
-                                kind: 'left'
-                            })
-                        }
-                        else {
-                            const message = await window.myapi.pressKey({
-                                kind: 'right'
-                            })
-                            message = await window.myapi.releaseKey({
-                                kind: 'right'
-                            })
-                        }
-                    })()
+            for (pose of poses) {
+                if (pose.class == 'scissors' && pose.active == true) {
+                    noStroke();
+                    fill(150, 0, 0, 150);
+                    let my_x = width * (1.0 - (landmarks[12].x + (landmarks[8].x - landmarks[12].x) / 2));
+                    let my_y = height * (landmarks[12].y + (landmarks[8].y - landmarks[12].y) / 2);
+                    arc(width * (1.0 - (landmarks[12].x + (landmarks[8].x - landmarks[12].x) / 2)),
+                        height * (landmarks[12].y + (landmarks[8].y - landmarks[12].y) / 2),
+                        80, 80,
+                        0,
+                        TWO_PI * ((millis() - pose.timestamp) / ms_operation_activate),
+                        PIE);
+                    if ((millis() - pose.timestamp) / ms_operation_activate > 1.0) {
+                        pose.active = false;
 
+                        if (g_browser_mode == false) {
+                            (async () => {
+                                if (my_x < width / 2) {
+                                    const message = await window.myapi.pressKey({
+                                        kind: 'left'
+                                    })
+                                    message = await window.myapi.releaseKey({
+                                        kind: 'left'
+                                    })
+                                }
+                                else {
+                                    const message = await window.myapi.pressKey({
+                                        kind: 'right'
+                                    })
+                                    message = await window.myapi.releaseKey({
+                                        kind: 'right'
+                                    })
+                                }
+                            })()
+                        }
+
+                    }
+                    //text(millis() - timestamp_pose_active, width / 2, height / 2);
                 }
-                //text(millis() - timestamp_pose_active, width / 2, height / 2);
+                if (pose.class == '5_fingers_pinch' && pose.active == true) {
+                    noStroke();
+                    fill(150, 150, 150, 150);
+                    let my_x = width * (1.0 - (landmarks[12].x + (landmarks[8].x - landmarks[12].x) / 2));
+                    let my_y = height * (landmarks[12].y + (landmarks[8].y - landmarks[12].y) / 2);
+                    arc(width * (1.0 - (landmarks[12].x + (landmarks[8].x - landmarks[12].x) / 2)),
+                        height * (landmarks[12].y + (landmarks[8].y - landmarks[12].y) / 2),
+                        80, 80,
+                        0,
+                        TWO_PI * ((millis() - pose.timestamp) / ms_operation_activate),
+                        PIE);
+                    if ((millis() - pose.timestamp) / ms_operation_activate > 1.0) {
+                        pose.active = false;
+                        trail_mode.toggle();
+                    }
+                }
+
             }
 
         }
     }
 
-
+    if (trails_right.have_nothing_to_draw == true &&
+        trails_left.have_nothing_to_draw == true) {
+        noLoop();
+    }
+    if (trail_mode.name == 'All Fingers') {
+        trails_right.draw();
+        trails_left.draw();
+    }
+    else if (trail_mode.name == 'Index Finger') {
+        trails_right.drawIndex();
+        trails_left.drawIndex();
+    }
     // strokeWeight(1);
     // text("p5 and MediaPipe Hands Demo", 20, 20);
     // noFill();
@@ -293,21 +435,14 @@ var hands;
 function keyPressed() {
 
     if (key == ' ') {
-        console.log(g_angles);
+        //console.log(g_angles);
+        trail_mode.toggle();
     }
-    // if (key == 's') {
-    //     startMediaPipeHands();
-    // }
-    // else if (key == 'c') {
-    //     stopMediaPipeHands();
-    // }
-
-    // console.log(document.querySelector('body'));
 
 }
 
-function toggleFingerGesture(_enable_gesture) {
-    is_enable_gesture = _enable_gesture;
+function toggleFingerGesture(_enable_mouse) {
+    is_enable_mouse = _enable_mouse;
 }
 function toggleMediaPipeHands(_deviceId) {
 

@@ -2,6 +2,7 @@
 // It has the same sandbox as a Chrome extension.
 const { contextBridge, ipcRenderer } = require("electron")
 contextBridge.exposeInMainWorld('myapi', {
+    leftClick: async (data) => await ipcRenderer.invoke('leftClick', data),
     up: async (data) => await ipcRenderer.invoke('up', data),
     down: async (data) => await ipcRenderer.invoke('down', data),
     drag: async (data) => await ipcRenderer.invoke('drag', data),

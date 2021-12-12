@@ -7,6 +7,7 @@ const is_linux = process.platform === 'linux';
 // Modules to control application life and create native browser window
 const { app, globalShortcut, BrowserWindow, screen, Tray, Menu, MenuItem, ipcMain, dialog } = require('electron')
 const path = require('path')
+const { localStorage, sessionStorage } = require('electron-browser-storage');
 
 
 const { mouse, Button, Key, keyboard } = require("@nut-tree/nut-js");
@@ -23,6 +24,7 @@ var mouse_offset = {
 
 var mainWindow;
 function createWindow() {
+
   // Create the browser window.
   let active_screen = screen.getPrimaryDisplay();
   const { width, height } = active_screen.workAreaSize;
@@ -64,6 +66,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
 
+  localStorage.setItem('electron', 'true');
   createWindow()
   let menu = Menu.buildFromTemplate(
     [
@@ -265,6 +268,19 @@ app.on('will-quit', function () {
 //----------------------------------------
 // IPC Communication
 //----------------------------------------
+ipcMain.handle('leftClick', (event, data) => {
+  if (is_enable_mouse) {
+    (async () => {
+      var pos = {
+        x: data.x + mouse_offset.x,
+        y: data.y + mouse_offset.y
+      }
+      await mouse.setPosition(pos);
+      await mouse.leftClick();
+    })()
+  }
+
+})
 ipcMain.handle('down', (event, data) => {
   if (is_enable_mouse) {
     (async () => {

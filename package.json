@@ -1,6 +1,6 @@
 {
   "name": "handable",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "handable is an application that draws only the user's hand on the entire desktop screen. During a presentation, the user can use his or her hands to communicate various gestures.",
   "main": "main.js",
   "scripts": {
@@ -45,6 +45,7 @@
   "dependencies": {
     "@nut-tree/nut-js": "^1.7.1-next.20211116233225",
     "dotenv": "^10.0.0",
+    "electron-browser-storage": "^1.0.7",
     "electron-notarize": "^1.1.1"
   }
 }
